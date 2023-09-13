@@ -9,6 +9,17 @@ class ContentsRepairsController extends AppController {
 	public function beforeFilter() {
 		parent::beforeFilter();
 
+		if (!defined('LOG_CONTENTS_REPAIR')) {
+			define('LOG_CONTENTS_REPAIR', 'log_contents_repair');
+			CakeLog::config('log_contents_repair', [
+				'engine' => 'FileLog',
+				'types' => ['log_contents_repair'],
+				'file' => 'log_contents_repair',
+				'size' => '3MB',
+				'rotate' => 5,
+			]);
+		}
+
 		if (!BcUtil::isAdminUser()) {
 			$message = 'システム管理者以外はアクセスできません。';
 			if ($this->Components->loaded('BcMessage')) {
@@ -42,7 +53,7 @@ class ContentsRepairsController extends AppController {
 			} else {
 				$this->setMessage($message);
 			}
-			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] '. $message);
+			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] verity_contents_tree '. $message);
 		} else {
 			CakeLog::write(LOG_CONTENTS_REPAIR, print_r($result, true));
 			$message = 'コンテンツのツリー構造に問題があります。ログを確認してください。';
@@ -51,7 +62,7 @@ class ContentsRepairsController extends AppController {
 			} else {
 				$this->setMessage($message, true, false);
 			}
-			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] '. $message);
+			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] verity_contents_tree '. $message);
 		}
 		$this->redirect(['action' => 'index']);
 	}
@@ -118,12 +129,13 @@ class ContentsRepairsController extends AppController {
 			$this->redirect(['action' => 'index']);
 		}
 
-		// ■ lft のフィールドを複製して持たせる
-		// ■ 全体に対して recover かける
-		// parent_id を元に全ての左右のフィールドを再構築する
+		// 既存の parent_id を元に全ての左右のフィールドを再構築する
 		$Content->recover('parent');
-
-		// // ■ site_id = 0 のフォルダで level = 1 のものに対して、旧lft を基準として reorder かける
+		// ■ site_id = 0 のフォルダで level = 1 のものに対して、旧lft を基準として reorder かける
+		// ツリー構造のデータ中のノード (と子ノード) を、パラメータで定義されたフィールドと指示によって、もう一度並び替える。このメソッドは、全てのノードの親を変更しません。
+		// - 同一のサイトIDに絞ることで、サブサイトのツリー構造に影響を与えないようにする
+		// - level = 1 は、サイト直下のフォルダ
+		// - 並び替える基準値として lft_old を用いることで、可能な限り以前の並び順を保つ
 		$mainSiteList = $Content->find('all', [
 			'conditions' => [
 				'Content.site_id' => 0,
