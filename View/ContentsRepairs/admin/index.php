@@ -50,12 +50,11 @@
 				); ?>
 			</li>
 		</ul>
-
 </section>
 
 <script>
 $(function () {
-	$('.readme a.exec-repair').on('click', function () {
+	$('a.exec-repair').on('click', function () {
 		if (confirm("DBのバックアップは取得しましたか？コンテンツ管理データの修復を試みます。良いですか？")) {
 			$("#Waiting").show();
 		} else {
