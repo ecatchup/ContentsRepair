@@ -1,0 +1,14 @@
+## IDE files and folders
+.cache
+.project
+.settings
+nbproject
+.idea
+.DS_Store
+_notes
+.svn
+_compareTemp
+.vscode/*
+
+## Allow 'empty' files
+!empty
