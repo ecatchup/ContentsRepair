@@ -41,7 +41,7 @@ class ContentsRepairsController extends AppController {
 	/**
 	 * コンテンツ管理のツリー構造のチェックを行う
 	 */
-	public function admin_verity_contents_tree() {
+	public function admin_verify_contents_tree() {
 		$this->_checkReferer();
 		$Content = ClassRegistry::init('Content');
 		$Content->Behaviors->unload('SoftDelete');
@@ -53,7 +53,7 @@ class ContentsRepairsController extends AppController {
 			} else {
 				$this->setMessage($message);
 			}
-			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] verity_contents_tree '. $message);
+			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] verify_contents_tree '. $message);
 		} else {
 			CakeLog::write(LOG_CONTENTS_REPAIR, print_r($result, true));
 			$message = 'コンテンツのツリー構造に問題があります。ログを確認してください。';
@@ -62,7 +62,7 @@ class ContentsRepairsController extends AppController {
 			} else {
 				$this->setMessage($message, true, false);
 			}
-			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] verity_contents_tree '. $message);
+			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] verify_contents_tree '. $message);
 		}
 		$this->redirect(['action' => 'index']);
 	}

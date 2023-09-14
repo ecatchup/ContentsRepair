@@ -38,9 +38,8 @@
 		<ul>
 			<li>1.<?php // TreeBehavior::verifyする ?>
 				<?php $this->BcBaser->link('コンテンツ管理のデータの整合性をチェックする',
-					['action' => 'admin_verity_contents_tree'],
-					['class' => 'button'],
-					sprintf('コンテンツ管理データの整合性をチェックします。良いですか？'), false
+					['action' => 'admin_verify_contents_tree'],
+					['class' => 'button exec-verify'],
 				); ?>
 			</li>
 			<li>2.<?php // TreeBehavior::reorderする ?>
@@ -54,6 +53,14 @@
 
 <script>
 $(function () {
+	$('a.exec-verify').on('click', function () {
+		if (confirm("コンテンツ管理データの整合性をチェックします。良いですか？")) {
+			$("#Waiting").show();
+		} else {
+			return false;
+		}
+	});
+
 	$('a.exec-repair').on('click', function () {
 		if (confirm("DBのバックアップは取得しましたか？コンテンツ管理データの修復を試みます。良いですか？")) {
 			$("#Waiting").show();
