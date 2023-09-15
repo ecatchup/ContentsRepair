@@ -44,6 +44,7 @@ class ContentsRepairsController extends AppController {
 			$repairLog = $File->read();
 		}
 		$this->set('repairLog', $repairLog);
+		$this->set('availableZip', extension_loaded('zip'));
 	}
 
 	/**

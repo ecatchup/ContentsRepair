@@ -57,11 +57,13 @@
 <div class="section">
 	<h2>
 		ログ: log_contents_repair.log
+		<?php if ($availableZip): ?>
 		&nbsp;&nbsp;&nbsp;&nbsp;
 		<?php $this->BcBaser->link('ダウンロード',
 			['action' => 'download'],
 			['class' => 'button-small exec-download'],
 		); ?>
+		<?php endif ?>
 	</h2>
 
 		<?php echo $this->BcForm->textarea('LogContentsRepair.log', [
