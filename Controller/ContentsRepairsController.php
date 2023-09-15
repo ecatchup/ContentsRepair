@@ -36,6 +36,14 @@ class ContentsRepairsController extends AppController {
 	 */
 	public function admin_index() {
 		$this->pageTitle = 'コンテンツデータ修復管理';
+
+		$logFile = TMP .'logs'. DS .'log_contents_repair.log';
+		$repairLog = '';
+		if (file_exists($logFile)) {
+			$File = new File($logFile);
+			$repairLog = $File->read();
+		}
+		$this->set('repairLog', $repairLog);
 	}
 
 	/**
@@ -231,6 +239,65 @@ class ContentsRepairsController extends AppController {
 
 		CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] reflesh_contents 処理終了 ━━━━━━━━━━━━━━━━');
 		$this->redirect(['action' => 'index']);
+	}
+
+	/**
+	 * ログ・ファイルのダウンロード
+	 */
+	public function admin_download() {
+		$this->_checkReferer();
+
+		$zipEnable = extension_loaded('zip');
+		if (!$zipEnable) {
+			$message = 'ZIPモジュールがインストールされていないため、ログ・ファイルのダウンロードはできません。';
+			if ($this->Components->loaded('BcMessage')) {
+				$this->BcMessage->setError($message, false);
+			} else {
+				$this->setMessage($message, true);
+			}
+			$this->redirect(['action' => 'index']);
+		}
+
+		$logPath = TMP .'logs'. DS .'log_contents_repair.log';
+		// $fileSize = 0;
+		// $fileSize = filesize($logPath);
+		if (!file_exists($logPath)) {
+			$message = 'ログ・ファイルが存在しません。';
+			if ($this->Components->loaded('BcMessage')) {
+				$this->BcMessage->setInfo($message, false);
+			} else {
+				$this->setMessage($message, true);
+			}
+			$this->redirect(['action' => 'index']);
+		}
+
+		Configure::write('debug', 0);
+		$this->autoRender = false;
+		$this->response->disableCache();
+
+		App::uses('BcZip', 'Lib');
+		$bcZip = new BcZip();
+		$tempZipFile = TMP .'logs'. DS . date('YmdHis') .'_log_contents_repair.zip';
+		if ($bcZip->Zip->open($tempZipFile, ZipArchive::CREATE) === TRUE) {
+			$bcZip->Zip->addFile($logPath, 'log_contents_repair.log');
+			$bcZip->Zip->close();
+
+			header("Content-Type: application/zip");
+			header("Content-Disposition: attachment; filename=" . basename($tempZipFile) . ";");
+			header("Content-Length: " . filesize($tempZipFile));
+			while (ob_get_level()) { ob_end_clean(); }
+			echo readfile($tempZipFile);
+			unlink($tempZipFile);
+
+		} else {
+			$message = 'zipファイルの作成に失敗しました。ftpクライアントで直接ダウンロードしてください。';
+			if ($this->Components->loaded('BcMessage')) {
+				$this->BcMessage->setError($message, false);
+			} else {
+				$this->setMessage($message, true);
+			}
+			$this->redirect(['action' => 'index']);
+		}
 	}
 
 }

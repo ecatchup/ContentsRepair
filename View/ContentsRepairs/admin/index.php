@@ -41,21 +41,40 @@
 		<ul>
 			<li>1.<?php // TreeBehavior::verifyする ?>
 				<?php $this->BcBaser->link('コンテンツ管理のデータの整合性をチェックする',
-					['action' => 'admin_verify_contents_tree'],
+					['action' => 'verify_contents_tree'],
 					['class' => 'button exec-verify'],
 				); ?>
 			</li>
 			<li>2.<?php // TreeBehavior::reorderする ?>
 				<?php $this->BcBaser->link('コンテンツ管理のデータの整合性を修復する',
-					['action' => 'admin_reflesh_contents', '?' => ['mode' => 'addlft']],
+					['action' => 'reflesh_contents', '?' => ['mode' => 'addlft']],
 					['class' => 'button exec-repair'],
 				); ?>
 			</li>
 		</ul>
 </section>
 
+<div class="section">
+	<h2>
+		ログ: log_contents_repair.log
+		&nbsp;&nbsp;&nbsp;&nbsp;
+		<?php $this->BcBaser->link('ダウンロード',
+			['action' => 'download'],
+			['class' => 'button-small exec-download'],
+		); ?>
+	</h2>
+
+		<?php echo $this->BcForm->textarea('LogContentsRepair.log', [
+			'value' => $repairLog,
+			'style' => 'width:99%;height:300px;font-size:12px',
+			'readonly' => 'readonly',
+		]); ?>
+</div>
+
 <script>
 $(function () {
+	$('#LogContentsRepairLog').scrollTop($('#LogContentsRepairLog')[0].scrollHeight);
+
 	$('a.exec-verify').on('click', function () {
 		if (confirm("コンテンツ管理データの整合性をチェックします。良いですか？")) {
 			$("#Waiting").show();
