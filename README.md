@@ -23,6 +23,18 @@ ContentsRepair プラグインは、sqlite利用時に、コンテンツ管理�
     - 説明を記載しているため確認の上、実行してください。
 
 
+## 使い方.2
+
+- 本プラグインを有効化することで、コンテンツを削除した際に、ゴミ箱に入る動作が無効化されます。
+    - 具体的には、ゴミ箱に入れる一次削除（論理削除）が、物理削除になります。
+- baserの基本動作として、削除操作で「ゴミ箱に入ります」案内が出ますがそのまま削除となります。
+
+### ゴミ箱に入る動作に戻したいとき
+
+- 以下のファイルを Event ディレクトリ毎削除してください。
+    - app/Plugin/ContentsRepair/Event/ContentsRepairModelEventListener.php
+
+
 ## Thanks
 
 - [http://basercms.net](http://basercms.net/)
