@@ -1,6 +1,9 @@
 <?php
 /**
  * [ADMIN] ContentsRepair
+ *
+ * @copyright Copyright (c) Catchup, Inc.
+ * @license MIT LICENSE
  */
 ?>
 <section class="section">

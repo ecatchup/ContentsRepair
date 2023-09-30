@@ -1,6 +1,9 @@
 <?php
 /**
  * [Controller] ContentsRepair
+ *
+ * @copyright Copyright (c) Catchup, Inc.
+ * @license MIT LICENSE
  */
 class ContentsRepairsController extends AppController {
 	public $uses = [];

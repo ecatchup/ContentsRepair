@@ -1,6 +1,9 @@
 <?php
 /**
  * [ModelEventListener] ContentsRepairModelEventListener
+ *
+ * @copyright Copyright (c) Catchup, Inc.
+ * @license MIT LICENSE
  */
 class ContentsRepairModelEventListener extends BcModelEventListener {
 	public $events = [
