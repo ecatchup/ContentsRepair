@@ -40,14 +40,27 @@ class ContentsRepairsController extends AppController {
 	public function admin_index() {
 		$this->pageTitle = 'コンテンツデータ修復管理';
 
-		$logFile = TMP .'logs'. DS .'log_contents_repair.log';
-		$repairLog = '';
-		if (file_exists($logFile)) {
-			$File = new File($logFile);
+		$repairLog = TMP .'logs'. DS .'log_contents_repair.log';
+		if (file_exists($repairLog)) {
+			$File = new File($repairLog);
 			$repairLog = $File->read();
 		}
 		$this->set('repairLog', $repairLog);
 		$this->set('availableZip', extension_loaded('zip'));
+
+		// db になにを利用しているか判定する
+		$dbType = $this->getDbType();
+		$this->set('dbType', $dbType);
+	}
+
+	/**
+	 * db になにを利用しているか判定する
+	 * @return string
+	 */
+	private function getDbType() {
+		$db = ConnectionManager::getDataSource('default');
+		$datasource = strtolower(preg_replace('/^Database\/Bc/', '', $db->config['datasource']));
+		return $datasource;
 	}
 
 	/**
@@ -209,6 +222,15 @@ class ContentsRepairsController extends AppController {
 			CakeLog::write(LOG_CONTENTS_REPAIR, 'Content.lft_old の削除に失敗しました。※手動で削除してください。');
 		}
 
+		// キャッシュクリア（URL修正前）
+		clearAllCache();
+
+		// 各コンテンツの壊れている url 値を、本来あるべきURLに修正する
+		$this->_repairContentUrls($Content, $subSiteList);
+
+		// キャッシュクリア（URL修正後）
+		clearAllCache();
+
 		CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] reflesh_contents実行後');
 		$result = $Content->verify();
 		if($result === true) {
@@ -301,6 +323,127 @@ class ContentsRepairsController extends AppController {
 				$this->setMessage($message, true);
 			}
 			$this->redirect(['action' => 'index']);
+		}
+	}
+
+	/**
+	 * コンテンツURLを修復する
+	 *
+	 * @param Model $Content Contentモデル
+	 * @param array $subSiteList サブサイトリスト
+	 * @return array 修復結果 ['repaired' => 件数, 'unchanged' => 件数]
+	 */
+	private function _repairContentUrls($Content, $subSiteList = []) {
+		CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] URL修正処理開始');
+
+		$totalRepairedCount = 0;
+		$totalUnchangedCount = 0;
+
+		// メインサイト（site_id = 0）のURL修正
+		CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] メインサイト(site_id=0)のURL修正開始');
+		$mainContents = $Content->find('all', [
+			'conditions' => [
+				'Content.site_id' => 0,
+				'NOT' => [
+					'Content.site_root' => 1,
+					'Content.deleted' => 1,
+				],
+			],
+			'recursive' => -1,
+			'order' => 'Content.lft ASC',
+			'callbacks' => false,
+		]);
+
+		foreach ($mainContents as $content) {
+			$result = $this->_repairSingleContentUrl($Content, $content);
+			$totalRepairedCount += $result['repaired'];
+			$totalUnchangedCount += $result['unchanged'];
+		}
+		CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] メインサイト(site_id=0)のURL修正完了');
+
+		// サブサイト対応処理
+		if ($subSiteList) {
+			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] サブサイトのURL修正開始');
+			foreach ($subSiteList as $subSiteId => $subSite) {
+				CakeLog::write(LOG_CONTENTS_REPAIR, "[Controller] サブサイト(site_id={$subSiteId})のURL修正開始");
+
+				$subContents = $Content->find('all', [
+					'conditions' => [
+						'Content.site_id' => $subSiteId,
+						'NOT' => [
+							'Content.site_root' => 1,
+							'Content.deleted' => 1,
+						],
+					],
+					'recursive' => -1,
+					'order' => 'Content.lft ASC',
+					'callbacks' => false,
+				]);
+
+				foreach ($subContents as $content) {
+					$result = $this->_repairSingleContentUrl($Content, $content);
+					$totalRepairedCount += $result['repaired'];
+					$totalUnchangedCount += $result['unchanged'];
+				}
+
+				CakeLog::write(LOG_CONTENTS_REPAIR, "[Controller] サブサイト(site_id={$subSiteId})のURL修正完了");
+			}
+			CakeLog::write(LOG_CONTENTS_REPAIR, '[Controller] サブサイトのURL修正完了');
+		}
+
+		CakeLog::write(LOG_CONTENTS_REPAIR, "[Controller] URL修正処理完了 - 修正件数: {$totalRepairedCount}件、変更なし: {$totalUnchangedCount}件");
+
+		return [
+			'repaired' => $totalRepairedCount,
+			'unchanged' => $totalUnchangedCount
+		];
+	}
+
+	/**
+	 * 単一コンテンツのURLを修復する
+	 *
+	 * @param Model $Content Contentモデル
+	 * @param array $content コンテンツデータ
+	 * @return array 修復結果 ['repaired' => 0 or 1, 'unchanged' => 0 or 1]
+	 */
+	private function _repairSingleContentUrl($Content, $content) {
+		$id = $content['Content']['id'];
+		$currentUrl = $content['Content']['url'];
+
+		// Content::createUrl() を使用して正しいURLを生成
+		$correctUrl = $Content->createUrl($id, $content['Content']['plugin'], $content['Content']['type']);
+
+		if ($correctUrl === false) {
+			CakeLog::write(LOG_CONTENTS_REPAIR, "[URL修正] コンテンツID:{$id} - URL生成失敗");
+			return ['repaired' => 0, 'unchanged' => 0];
+		}
+
+		// 現在のURLと正しいURLを比較
+		if ($currentUrl !== $correctUrl) {
+			// URL修正前後をログに記録（2行に分けて見やすく）
+			CakeLog::write(LOG_CONTENTS_REPAIR, "[URL修正] コンテンツID:{$id} - 修正前: {$currentUrl}");
+			CakeLog::write(LOG_CONTENTS_REPAIR, "[URL修正] コンテンツID:{$id} - 修正後: {$correctUrl}");
+
+			// updatingRelated と updatingSystemData を一時的に無効化
+			$updatingRelated = $Content->updatingRelated;
+			$updatingSystemData = $Content->updatingSystemData;
+			$Content->updatingRelated = false;
+			$Content->updatingSystemData = false;
+
+			// URLフィールドのみを更新（他のフィールドは変更しない）
+			$Content->id = $id;
+			if ($Content->saveField('url', $correctUrl, false)) {
+				$Content->updatingRelated = $updatingRelated;
+				$Content->updatingSystemData = $updatingSystemData;
+				return ['repaired' => 1, 'unchanged' => 0];
+			} else {
+				CakeLog::write(LOG_CONTENTS_REPAIR, "[URL修正] コンテンツID:{$id} - 保存失敗");
+				$Content->updatingRelated = $updatingRelated;
+				$Content->updatingSystemData = $updatingSystemData;
+				return ['repaired' => 0, 'unchanged' => 0];
+			}
+		} else {
+			return ['repaired' => 0, 'unchanged' => 1];
 		}
 	}
 
